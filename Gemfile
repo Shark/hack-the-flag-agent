@@ -8,6 +8,7 @@ gem 'rack'
 gem 'http'
 gem 'dotenv'
 gem 'influxdb'
+gem 'colorize'
 
 group :development do
   gem 'pry'
