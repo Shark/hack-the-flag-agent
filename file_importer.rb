@@ -9,7 +9,7 @@ require 'influxdb'
 require 'http'
 require 'colorize'
 
-Movement = Struct.new(:timestamp, :mac, :x, :y, :z, :ssid, :event_id)
+Movement = Struct.new(:timestamp, :mac, :x, :y, :z, :building, :ssid, :event_id)
 influxdb = InfluxDB::Client.new(url: ENV.fetch('INFLUXDB_URL'), open_timeout: 3)
 processed_event_ids = {}
 
@@ -25,17 +25,13 @@ def fetch_live_feed
         next
       end
 
-      unless m['hierarchyDetails']['building']['name'] == 'Väre'
-        puts "skipping because building #{m['hierarchyDetails']['building']['name']}".light_red
-        next
-      end
-
       movements << Movement.new(
         Time.at(Integer(m['timestamp']) / 1000),
         m['deviceId'],
         Integer(m['locationCoordinate']['x']),
         Integer(m['locationCoordinate']['y']),
-        Integer(m['hierarchyDetails']['floor']['name']),
+        m['hierarchyDetails']['floor']['name'].to_i,
+        m['hierarchyDetails']['building']['name'],
         m['ssid'],
         m['eventId']
       )
@@ -78,7 +74,7 @@ loop do
              {
               series: 'movement',
               values: {x: m.x, y: m.y, z: m.z},
-              tags: {mac: m.mac, ssid: m.ssid, floor: floor_mapping.fetch(m.z, 'NOT APPLICABLE')},
+              tags: {mac: m.mac, ssid: m.ssid, building: m.building, floor: floor_mapping.fetch(m.z, 'NOT APPLICABLE')},
               timestamp: m.timestamp.to_i,
             }
            end
