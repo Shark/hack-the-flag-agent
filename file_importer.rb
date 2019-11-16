@@ -7,6 +7,7 @@ require 'json'
 require 'optparse'
 require 'influxdb'
 require 'http'
+require 'colorize'
 
 Movement = Struct.new(:timestamp, :mac, :x, :y, :z, :ssid, :event_id)
 influxdb = InfluxDB::Client.new(url: ENV.fetch('INFLUXDB_URL'), open_timeout: 3)
@@ -20,12 +21,12 @@ def fetch_live_feed
   body.each do |el|
     el['notifications'].each do |m|
       unless m['notificationType'] == 'locationupdate'
-        puts "skipping because notificationType #{m['notificationType']}"
+        puts "skipping because notificationType #{m['notificationType']}".light_red
         next
       end
 
       unless m['hierarchyDetails']['building']['name'] == 'Väre'
-        puts "skipping because building #{m['hierarchyDetails']['building']['name']}"
+        puts "skipping because building #{m['hierarchyDetails']['building']['name']}".light_red
         next
       end
 
@@ -41,8 +42,11 @@ def fetch_live_feed
     end
   end
   movements
-rescue HTTP::ConnectionError => e
-  puts "Error fetch live feed: #{e}"
+rescue HTTP::ConnectionError => e # and rescue HTTP::TimeoutError
+  puts "Error fetch live feed: #{e}".red
+  []
+rescue HTTP::TimeoutError => e # and rescue HTTP::TimeoutError
+  puts "Error fetch live feed: #{e}".red
   []
 end
 
@@ -52,7 +56,10 @@ def parse_live_feed(body)
   str.gsub!('}{', '},{')
   JSON.parse(str)
 rescue JSON::ParserError => e
-  puts "Error fetch live feed: #{e}"
+  puts "Error fetch live feed: #{e}".red
+  puts "\e[0;31;49m"
+  puts body
+  puts "\e[0m"
   []
 end
 
